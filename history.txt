@@ -1,3 +1,20 @@
+1/1/2024
+
+[VM/DISK] fix imagedisk importer
+
+
+12/31/2023
+
+[VM/I8257] add code for debug
+
+[T250] support TOSHIBA T-250
+
+
+12/16/2023
+
+[X1TURBO/DISPLAY] fix text renderer for vertial doubled character
+
+
 6/11/2023
 
 [VM/I8257] support i8257

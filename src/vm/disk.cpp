@@ -2282,6 +2282,9 @@ bool DISK::imagedisk_to_d88(FILEIO *fio)
 					pos += d88_sct.size();
 				}
 			}
+#ifndef _ANY2D88
+			emu->out_debug_log(_T("IMD: Track=%d Head=%d Size=%d\tC=%02X H=%02X R=%02X N=%02x\n"), track, head, d88_sct.size(), d88_sct.c, d88_sct.h, d88_sct.r, d88_sct.n);
+#endif
 			
 			// copy to d88
 			if(trkside < 164) {
