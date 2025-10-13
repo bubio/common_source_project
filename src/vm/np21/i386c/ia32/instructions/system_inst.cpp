@@ -94,7 +94,7 @@ LLDT_Ew(UINT32 op)
 		if (CPU_STAT_CPL == 0) {
 			if (op >= 0xc0) {
 				CPU_WORKCLOCK(5);
-				src = *(reg16_b20[op]);
+				src = *(CPU_REG16_B20(op));
 			} else {
 				CPU_WORKCLOCK(11);
 				madr = calc_ea_dst(op);
@@ -121,9 +121,9 @@ SLDT_Ew(UINT32 op)
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(5);
 			if (CPU_INST_OP32) {
-				*(reg32_b20[op]) = ldtr;
+				*(CPU_REG32_B20(op)) = ldtr;
 			} else {
-				*(reg16_b20[op]) = ldtr;
+				*(CPU_REG16_B20(op)) = ldtr;
 			}
 		} else {
 			CPU_WORKCLOCK(11);
@@ -146,7 +146,7 @@ LTR_Ew(UINT32 op)
 		if (CPU_STAT_CPL == 0) {
 			if (op >= 0xc0) {
 				CPU_WORKCLOCK(5);
-				src = *(reg16_b20[op]);
+				src = *(CPU_REG16_B20(op));
 			} else {
 				CPU_WORKCLOCK(11);
 				madr = calc_ea_dst(op);
@@ -173,9 +173,9 @@ STR_Ew(UINT32 op)
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(5);
 			if (CPU_INST_OP32) {
-				*(reg32_b20[op]) = tr;
+				*(CPU_REG32_B20(op)) = tr;
 			} else {
-				*(reg16_b20[op]) = tr;
+				*(CPU_REG16_B20(op)) = tr;
 			}
 		} else {
 			CPU_WORKCLOCK(11);
@@ -249,14 +249,14 @@ MOV_CdRd(void)
 	int idx;
 
 	CPU_WORKCLOCK(11);
-	GET_PCBYTE(op);
+	GET_MODRM_PCBYTE(op);
 	if (op >= 0xc0) {
 		if (CPU_STAT_PM && (CPU_STAT_VM86 || CPU_STAT_CPL != 0)) {
 			VERBOSE(("MOV_CdRd: VM86(%s) or CPL(%d) != 0", CPU_STAT_VM86 ? "true" : "false", CPU_STAT_CPL));
 			EXCEPTION(GP_EXCEPTION, 0);
 		}
 
-		src = *(reg32_b20[op]);
+		src = *(CPU_REG32_B20(op));
 		idx = (op >> 3) & 7;
 
 		switch (idx) {
@@ -355,21 +355,19 @@ MOV_CdRd(void)
 			 * 1 = PVI (protected mode virtual interrupt)
 			 * 0 = VME (VM8086 mode extention)
 			 */
-			reg = 0		/* allow bit */
-#if (CPU_FEATURES & CPU_FEATURE_PGE) == CPU_FEATURE_PGE
-			    | CPU_CR4_PGE
-#endif
-#if (CPU_FEATURES & CPU_FEATURE_VME) == CPU_FEATURE_VME
-			    | CPU_CR4_PVI | CPU_CR4_VME
-#endif
-#if (CPU_FEATURES & CPU_FEATURE_FXSR) == CPU_FEATURE_FXSR
-			    | CPU_CR4_OSFXSR
-#endif
-#if (CPU_FEATURES & CPU_FEATURE_SSE) == CPU_FEATURE_SSE
-			    | CPU_CR4_OSXMMEXCPT
-#endif
-			    | CPU_CR4_PCE
-			;
+			reg = CPU_CR4_PCE;		/* allow bit */
+			if (i386cpuid.cpu_feature & CPU_FEATURE_PGE) {
+				reg |= CPU_CR4_PGE;
+			}
+			if (i386cpuid.cpu_feature & CPU_FEATURE_VME) {
+				reg |= CPU_CR4_PVI | CPU_CR4_VME;
+			}
+			if (i386cpuid.cpu_feature & CPU_FEATURE_FXSR) {
+				reg |= CPU_CR4_OSFXSR;
+			}
+			if (i386cpuid.cpu_feature & CPU_FEATURE_SSE) {
+				reg |= CPU_CR4_OSXMMEXCPT;
+			}
 			if (src & ~reg) {
 				//if (src & 0xfffffc00) {
 				if (src & 0xfffff800) {
@@ -407,14 +405,14 @@ MOV_RdCd(void)
 	int idx;
 
 	CPU_WORKCLOCK(11);
-	GET_PCBYTE(op);
+	GET_MODRM_PCBYTE(op);
 	if (op >= 0xc0) {
 		if (CPU_STAT_PM && (CPU_STAT_VM86 || CPU_STAT_CPL != 0)) {
 			VERBOSE(("MOV_RdCd: VM86(%s) or CPL(%d) != 0", CPU_STAT_VM86 ? "true" : "false", CPU_STAT_CPL));
 			EXCEPTION(GP_EXCEPTION, 0);
 		}
 
-		out = reg32_b20[op];
+		out = CPU_REG32_B20(op);
 		idx = (op >> 3) & 7;
 
 		switch (idx) {
@@ -454,7 +452,7 @@ LMSW_Ew(UINT32 op)
 	if (!CPU_STAT_PM || CPU_STAT_CPL == 0) {
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(2);
-			src = *(reg16_b20[op]);
+			src = *(CPU_REG16_B20(op));
 		} else {
 			CPU_WORKCLOCK(3);
 			madr = calc_ea_dst(op);
@@ -481,9 +479,9 @@ SMSW_Ew(UINT32 op)
 	if (op >= 0xc0) {
 		CPU_WORKCLOCK(2);
 		if (CPU_INST_OP32) {
-			*(reg32_b20[op]) = (UINT16)CPU_CR0;
+			*(CPU_REG32_B20(op)) = (UINT16)CPU_CR0;
 		} else {
-			*(reg16_b20[op]) = (UINT16)CPU_CR0;
+			*(CPU_REG16_B20(op)) = (UINT16)CPU_CR0;
 		}
 	} else {
 		CPU_WORKCLOCK(3);
@@ -514,12 +512,12 @@ ARPL_EwGw(void)
 		PREPART_EA_REG16(op, src);
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(2);
-			dst = *(reg16_b20[op]);
+			dst = *(CPU_REG16_B20(op));
 			if ((dst & 3) < (src & 3)) {
 				CPU_FLAGL |= Z_FLAG;
 				dst &= ~3;
 				dst |= (src & 3);
-				*(reg16_b20[op]) = (UINT16)dst;
+				*(CPU_REG16_B20(op)) = (UINT16)dst;
 			} else {
 				CPU_FLAGL &= ~Z_FLAG;
 			}
@@ -778,7 +776,7 @@ VERR_Ew(UINT32 op)
 	if (CPU_STAT_PM && !CPU_STAT_VM86) {
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(5);
-			selector = *(reg16_b20[op]);
+			selector = *(CPU_REG16_B20(op));
 		} else {
 			CPU_WORKCLOCK(11);
 			madr = calc_ea_dst(op);
@@ -831,7 +829,7 @@ VERW_Ew(UINT32 op)
 	if (CPU_STAT_PM && !CPU_STAT_VM86) {
 		if (op >= 0xc0) {
 			CPU_WORKCLOCK(5);
-			selector = *(reg16_b20[op]);
+			selector = *(CPU_REG16_B20(op));
 		} else {
 			CPU_WORKCLOCK(11);
 			madr = calc_ea_dst(op);
@@ -875,7 +873,7 @@ MOV_DdRd(void)
 	int idx;
 
 	CPU_WORKCLOCK(11);
-	GET_PCBYTE(op);
+	GET_MODRM_PCBYTE(op);
 	if (op >= 0xc0) {
 		if (CPU_STAT_PM && (CPU_STAT_VM86 || CPU_STAT_CPL != 0)) {
 			VERBOSE(("MOV_DdRd: VM86(%s) or CPL(%d) != 0", CPU_STAT_VM86 ? "true" : "false", CPU_STAT_CPL));
@@ -888,7 +886,7 @@ MOV_DdRd(void)
 			EXCEPTION(DB_EXCEPTION, 0);
 		}
 
-		src = *(reg32_b20[op]);
+		src = *(CPU_REG32_B20(op));
 		idx = (op >> 3) & 7;
 
 		CPU_DR(idx) = src;
@@ -928,7 +926,7 @@ MOV_RdDd(void)
 	int idx;
 
 	CPU_WORKCLOCK(11);
-	GET_PCBYTE(op);
+	GET_MODRM_PCBYTE(op);
 	if (op >= 0xc0) {
 		if (CPU_STAT_PM && (CPU_STAT_VM86 || CPU_STAT_CPL != 0)) {
 			VERBOSE(("MOV_RdDd: VM86(%s) or CPL(%d) != 0", CPU_STAT_VM86 ? "true" : "false", CPU_STAT_CPL));
@@ -941,7 +939,7 @@ MOV_RdDd(void)
 			EXCEPTION(DB_EXCEPTION, 0);
 		}
 
-		out = reg32_b20[op];
+		out = CPU_REG32_B20(op);
 		idx = (op >> 3) & 7;
 
 		switch (idx) {
