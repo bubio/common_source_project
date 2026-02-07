@@ -1,3 +1,97 @@
+1/1/2026
+
+[VM/CMU800] improve CMU-800 (thanks Mr.kuran_kuran)
+
+[PC8001] support CMU-800 (thanks Mr.kuran_kuran)
+[PC8801] support CMU-800 (thanks Mr.kuran_kuran)
+
+
+12/31/2025
+
+[MZ80B/MEMORY] fix text vram size (thanks Mr.kuran_kuran)
+[MZ2200/MEMORY] fix text vram size (thanks Mr.kuran_kuran)
+[PC9801/MEMBUS] improve SASI BIOS rom/ram switching
+[PC9801/MEMBUS] improve EMS memory to use protect memory (thanks NP2)
+[X1/EMM] fix crash issue while releasing (thanks Mr.Tsuneoka)
+
+
+12/15/2025
+
+[BX1] support I/O CONTROLLER X-7101B
+[PC9801/MEMBUS] support PC-9801-53 with 2MB RAM
+
+
+12/14/2025
+
+[CONFIG] add option_switch for enabling option devices instead of dipswitch
+[EMU] support is_hard_disk_connected() and is_compact_disc_connected()
+[VM/VM_TEMPLATE] add is_hard_disk_connected() and is_compact_disc_connected()
+
+[MZ700] support enabling/disabling option devices
+[MZ80K] support enabling/disabling option devices
+[MZ80B] support enabling/disabling option devices
+[MZ2500] support enabling/disabling option devices
+[PC8801MA/FLOPPY] support enabling/disabling CD-ROM
+
+
+12/8/2025
+
+[EMU/DEBUGGER] support DI command (thanks Mr.kuran_kuran)
+[EMU/SOUND] restart playing sound if it is suspended (thanks Mr.YAT)
+
+[VM/*] improve process_state() for GNU C/Clang (thanks Mr.shikarunochi)
+[VM/CMU800] support CMU-800 (thanks Mr.kuran_kuran)
+[VM/HD46505] support SY6845E
+[VM/PC80S31K] hack: support 1.44MB 2HD
+
+[MZ700] support Kersten & Partner SFD-700 and 80-column display
+[MZ700] support CMU-800 (thanks Mr.kuran_kuran)
+[MZ700/EMM] support 16MB battery backuped EMM
+[MZ80K] support CMU-800 (thanks Mr.kuran_kuran)
+[MZ80B] support CMU-800 (thanks Mr.kuran_kuran)
+[MZ80B] support PIO-3034
+[MZ2200] support CMU-800 (thanks Mr.kuran_kuran)
+[MZ2200] support PIO-3034
+[MZ2500] support CMU-800 (thanks Mr.kuran_kuran)
+[MZ2500/MZ1R12] support MZ-1R12 (thanks Mr.kuran_kuran)
+[PC8801] hack: support 1.44MB 2HD
+[PC9801] hack: support 1.44MB 2HD
+[X1] support serial MIDI port (thanks Mr.MedamaP)
+[X1] hack: support 2DD
+[X1/EMM] support 16MB battery backuped EMM
+[X1TURBO] hack: support 1.44MB 2HD
+[X1TURBO/DISPLAY] improve text screen renderer (thanks Mr.MedamaP)
+
+
+11/30/2025
+
+[BX1/PRINTER] add hack code for printing FORMAT instruction
+[MZ2800/CRTC] fix to render screen correctly after screen mode is changed
+[PC100/IOCTRL] fix keyboard
+
+
+11/24/2025
+
+[VM/SY6522] reimplement based on MAME 0.279
+
+
+11/23/2025
+
+[VM/I386_NP21] don't break executing rep movs/stos instructions (thanks Mr. sava)
+[VM/I386_NP21] improve sgdt/sidt instructions to store whole of base address
+[VM/I386_NP21] fix to catch exception occurred while executing interrupt
+[VM/I8253] improve timing when writing to counter is reflected (thanks Mr.Koucha-Youkan)
+[VM/MC6844] support irq line
+
+[BX1] improve irq line connections
+[BX1/PRINTER] support paper feed key
+[MZ700/MEMORY] improve mapping of ext rom (thanks Mr.Koucha-Youkan)
+[MZ2500/CRTC] improve horizontal scroll (thanks Mr.Koucha-Youkan)
+[MZ2500/ME1E32] support MZ-1E32 (thanks Mr.Koucha-Youkan)
+[RX78/MEMORY] support 32KB ROM cartridge
+[RX78/VDP] improve color palette (thanks Mr.Koucha-Youkan)
+
+
 11/09/2025
 
 [VM/I386] don't set cpl until all reads are finished (thanks Mr. cracyc)

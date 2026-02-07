@@ -436,14 +436,16 @@ void PC88::initialize()
 	}
 #endif
 #ifdef SUPPORT_PC88_CDROM
-	if(fio->Fopen(create_local_path(_T("CDBIOS.ROM")), FILEIO_READ_BINARY)) {
-		fio->Fread(cdbios, 0x10000, 1);
-		fio->Fclose();
-		cdbios_loaded = true;
+	if(config.option_switch & OPTION_SWITCH_CDROM) {
+		if(fio->Fopen(create_local_path(_T("CDBIOS.ROM")), FILEIO_READ_BINARY)) {
+			fio->Fread(cdbios, 0x10000, 1);
+			fio->Fclose();
+			cdbios_loaded = true;
+		}
 	}
 #endif
 #ifdef SUPPORT_PC88_16BIT
-	if(config.dipswitch & DIPSWITCH_16BIT) {
+	if(config.option_switch & OPTION_SWITCH_16BIT) {
 		if(fio->Fopen(create_local_path(_T("PC-8801-16_Z80.ROM")), FILEIO_READ_BINARY)) {
 			fio->Fread(boot_16bit, 0x2000, 1);
 			fio->Fclose();
@@ -657,7 +659,11 @@ void PC88::reset()
 	dmac.ch[0].io = dmac.ch[3].io = vm->dummy;
 #ifdef SUPPORT_PC88_CDROM
 	if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
-		dmac.ch[1].io = d_scsi_host;
+		if(d_scsi_host) {
+			dmac.ch[1].io = d_scsi_host;
+		} else {
+			dmac.ch[1].io = vm->dummy;
+		}
 	} else
 #endif
 #ifdef SUPPORT_PC88_FDD_8INCH
@@ -716,7 +722,9 @@ void PC88::reset()
 		cdda_register_id = -1;
 	}
 	cdda_volume = 100.0;
-	d_scsi_cdrom->set_volume((int)cdda_volume);
+	if(d_scsi_cdrom) {
+		d_scsi_cdrom->set_volume((int)cdda_volume);
+	}
 #endif
 #ifdef SUPPORT_PC88_16BIT
 	porta_16bit = 0;
@@ -1279,6 +1287,7 @@ void PC88::write_io8(uint32_t addr, uint32_t data)
 	case 0x78:
 		Port70_TEXTWND++;
 		break;
+#endif
 #ifdef SUPPORT_PC88_16BIT
 	case 0x80:
 		if(d_pio_16bit != NULL) {
@@ -1307,26 +1316,32 @@ void PC88::write_io8(uint32_t addr, uint32_t data)
 	// M88 cdif
 	case 0x90:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded && (mod & 0x01)) {
-			if(data & 0x01) {
-				if(port[0x9f] & 0x01) {
-					d_scsi_host->write_signal(SIG_SCSI_SEL, 0, 1);
-					d_scsi_host->write_signal(SIG_SCSI_SEL, 1, 1);
+			if(d_scsi_host) {
+				if(data & 0x01) {
+					if(port[0x9f] & 0x01) {
+						d_scsi_host->write_signal(SIG_SCSI_SEL, 0, 1);
+						d_scsi_host->write_signal(SIG_SCSI_SEL, 1, 1);
+						d_scsi_host->write_signal(SIG_SCSI_SEL, 0, 1);
+					}
+				} else {
 					d_scsi_host->write_signal(SIG_SCSI_SEL, 0, 1);
 				}
-			} else {
-				d_scsi_host->write_signal(SIG_SCSI_SEL, 0, 1);
+//				d_scsi_host->write_signal(SIG_SCSI_SEL, data, 1);
 			}
-//			d_scsi_host->write_signal(SIG_SCSI_SEL, data, 1);
 		}
 		break;
 	case 0x91:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
-			d_scsi_host->write_dma_io8(0, data);
+			if(d_scsi_host) {
+				d_scsi_host->write_dma_io8(0, data);
+			}
 		}
 		break;
 	case 0x94:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
-			d_scsi_host->write_signal(SIG_SCSI_RST, data, 0x80);
+			if(d_scsi_host) {
+				d_scsi_host->write_signal(SIG_SCSI_RST, data, 0x80);
+			}
 		}
 		break;
 	case 0x98:
@@ -1338,7 +1353,9 @@ void PC88::write_io8(uint32_t addr, uint32_t data)
 					cancel_event(this, cdda_register_id);
 					cdda_register_id = -1;
 				}
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				}
 				break;
 			case 2:
 			case 3:
@@ -1346,35 +1363,45 @@ void PC88::write_io8(uint32_t addr, uint32_t data)
 					cancel_event(this, cdda_register_id);
 					cdda_register_id = -1;
 				}
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				}
 				break;
 			case 4:
 				if(cdda_register_id != -1) {
 					cancel_event(this, cdda_register_id);
 				}
 				register_event(this, EVENT_FADE_IN, 100, true, &cdda_register_id); // 100ms
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				}
 				break;
 			case 5:
 				if(cdda_register_id != -1) {
 					cancel_event(this, cdda_register_id);
 				}
 				register_event(this, EVENT_FADE_IN, 1500, true, &cdda_register_id); // 1500ms
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 0.0));
+				}
 				break;
 			case 6:
 				if(cdda_register_id != -1) {
 					cancel_event(this, cdda_register_id);
 				}
 				register_event(this, EVENT_FADE_OUT, 100, true, &cdda_register_id); // 100ms
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				}
 				break;
 			case 7:
 				if(cdda_register_id != -1) {
 					cancel_event(this, cdda_register_id);
 				}
 				register_event(this, EVENT_FADE_OUT, 5000, true, &cdda_register_id); // 5000ms
-				d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				if(d_scsi_cdrom) {
+					d_scsi_cdrom->set_volume((int)(cdda_volume = 100.0));
+				}
 				break;
 			}
 		}
@@ -1385,6 +1412,24 @@ void PC88::write_io8(uint32_t addr, uint32_t data)
 		}
 		break;
 #endif
+#ifdef SUPPORT_CMU800
+	case 0x90:
+	case 0x91:
+	case 0x92:
+	case 0x93:
+	case 0x94:
+	case 0x95:
+	case 0x96:
+	case 0x97:
+	case 0x98:
+	case 0x99:
+	case 0x9a:
+	case 0x9b:
+	case 0x9c:
+		if(d_cmu800) {
+			d_cmu800->write_io8(addr, data);
+		}
+		break;
 #endif
 #ifdef SUPPORT_PC88_GSX8800
 	case 0xa0:
@@ -1774,11 +1819,13 @@ uint32_t PC88::read_io8_debug(uint32_t addr)
 	// M88 cdif
 	case 0x90:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
-			val  = d_scsi_host->read_signal(SIG_SCSI_BSY) ? 0x80 : 0;
-			val |= d_scsi_host->read_signal(SIG_SCSI_REQ) ? 0x40 : 0;
-			val |= d_scsi_host->read_signal(SIG_SCSI_MSG) ? 0x20 : 0;
-			val |= d_scsi_host->read_signal(SIG_SCSI_CD ) ? 0x10 : 0;
-			val |= d_scsi_host->read_signal(SIG_SCSI_IO ) ? 0x08 : 0;
+			if(d_scsi_host) {
+				val  = d_scsi_host->read_signal(SIG_SCSI_BSY) ? 0x80 : 0;
+				val |= d_scsi_host->read_signal(SIG_SCSI_REQ) ? 0x40 : 0;
+				val |= d_scsi_host->read_signal(SIG_SCSI_MSG) ? 0x20 : 0;
+				val |= d_scsi_host->read_signal(SIG_SCSI_CD ) ? 0x10 : 0;
+				val |= d_scsi_host->read_signal(SIG_SCSI_IO ) ? 0x08 : 0;
+			}
 			// do not show BSY,MSG,CxD,IxD when SEL=1 (M’·‚Ì–ì–] •«•—‰_˜^)
 			if(port[0x90] & 0x01) {
 				val &= ~(0x80 | 0x20 | 0x10 | 0x08);
@@ -1792,7 +1839,9 @@ uint32_t PC88::read_io8_debug(uint32_t addr)
 		break;
 	case 0x91:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
-			return d_scsi_host->read_dma_io8(0);
+			if(d_scsi_host) {
+				return d_scsi_host->read_dma_io8(0);
+			}
 		}
 		break;
 	case 0x92:
@@ -1818,6 +1867,13 @@ uint32_t PC88::read_io8_debug(uint32_t addr)
 	case 0x9d:
 		if(config.boot_mode == MODE_PC88_V2CD && cdbios_loaded) {
 			return 60;
+		}
+		break;
+#endif
+#ifdef SUPPORT_CMU800
+	case 0x9a:
+		if(d_cmu800) {
+			return d_cmu800->read_io8(addr);
 		}
 		break;
 #endif
@@ -2463,7 +2519,9 @@ void PC88::event_callback(int event_id, int err)
 			cdda_register_id = -1;
 			cdda_volume = 100.0;
 		}
-		d_scsi_cdrom->set_volume((int)cdda_volume);
+		if(d_scsi_cdrom) {
+			d_scsi_cdrom->set_volume((int)cdda_volume);
+		}
 		break;
 	case EVENT_FADE_OUT:
 		if((cdda_volume -= 0.1) <= 0) {
@@ -2471,7 +2529,9 @@ void PC88::event_callback(int event_id, int err)
 			cdda_register_id = -1;
 			cdda_volume = 0.0;
 		}
-		d_scsi_cdrom->set_volume((int)cdda_volume);
+		if(d_scsi_cdrom) {
+			d_scsi_cdrom->set_volume((int)cdda_volume);
+		}
 		break;
 #endif
 	}
@@ -3170,7 +3230,7 @@ void PC88::draw_text()
 	}
 #if defined(_PC8001SR)
 	// select katakana or hiragana
-	if(config.dipswitch & DIPSWITCH_PCG8100) {
+	if(config.option_switch & OPTION_SWITCH_PCG8100) {
 		memcpy(pcg_pattern + 0x500, Port33_HIRA ? hiragana : katakana, 0x200);
 	} else {
 		memcpy(kanji1 + 0x1500, Port33_HIRA ? hiragana : katakana, 0x200);
@@ -3207,7 +3267,7 @@ void PC88::draw_text()
 			uint8_t code = secret ? 0 : code_expand;//crtc.text.expand[cy][cx];
 			uint8_t *pattern;
 #ifdef SUPPORT_PC88_PCG8100
-			if(config.dipswitch & DIPSWITCH_PCG8100) {
+			if(config.option_switch & OPTION_SWITCH_PCG8100) {
 				pattern = ((attrib & 0x10) ? sg_pattern : pcg_pattern) + code * 8;
 			} else
 #endif

@@ -24,7 +24,7 @@ void PRINTER::initialize()
 {
 	fio = new FILEIO();
 	emu->get_osd()->open_console(82, 30, create_string(_T("Printer - %s"), _T(DEVICE_NAME)));
-	emu->get_osd()->set_console_code_oage(437);
+	emu->get_osd()->set_console_code_page(437);
 	emu->get_osd()->set_console_cursor_position(0, 8);
 	
 	register_vline_event(this);
@@ -45,8 +45,9 @@ void PRINTER::reset()
 		fio->Fclose();
 	}
 	column = func = 0;
-	
 	strobe = outdata = 0;
+	memset(buffer, 0, sizeof(buffer));
+	buffer_ptr = 0;
 }
 
 /*
@@ -119,6 +120,7 @@ void PRINTER::event_vline(int v, int clock)
 	}
 	if(p1.w != p2.w) {
 		uint8_t b = ram[p1.w];
+		buffer[(buffer_ptr++) & 15] = b;
 		if(func) {
 			if(func == 0xf0) {
 				if(column < b) {
@@ -150,9 +152,38 @@ void PRINTER::event_vline(int v, int clock)
 		} else if((b & 0xf0) == 0xf0) {
 			func = b;
 		} else if(b == 0x0d) {
-			output_char(0x0d);
-			output_char(0x0a);
-			column = 0;
+			// ugly patch for FORMAT function
+			if(buffer[( 7 + buffer_ptr) & 15] == ' ' &&
+			   buffer[( 8 + buffer_ptr) & 15] == 'F' &&
+			   buffer[( 9 + buffer_ptr) & 15] == 'O' &&
+			   buffer[(10 + buffer_ptr) & 15] == 'R' &&
+			   buffer[(11 + buffer_ptr) & 15] == 'M' &&
+			   buffer[(12 + buffer_ptr) & 15] == 'A' &&
+			   buffer[(13 + buffer_ptr) & 15] == 'T' &&
+			   buffer[(14 + buffer_ptr) & 15] == ' ') {
+			} else {
+				output_char(0x0d);
+				column = 0;
+			}
+		} else if(b == 0x12) {
+			// ugly patch for FORMAT function
+			if(buffer[( 6 + buffer_ptr) & 15] == ' ' &&
+			   buffer[( 7 + buffer_ptr) & 15] == 'F' &&
+			   buffer[( 8 + buffer_ptr) & 15] == 'O' &&
+			   buffer[( 9 + buffer_ptr) & 15] == 'R' &&
+			   buffer[(10 + buffer_ptr) & 15] == 'M' &&
+			   buffer[(11 + buffer_ptr) & 15] == 'A' &&
+			   buffer[(12 + buffer_ptr) & 15] == 'T' &&
+			   buffer[(13 + buffer_ptr) & 15] == ' ' &&
+			   buffer[(14 + buffer_ptr) & 15] == 0x0d) {
+			} else {
+				output_char(0x0a);
+			}
+		} else if(b == 0x85) {
+			// not equal to
+			output_char(0x3c);
+			output_char(0x3e);
+			column++;
 		} else if(b >= 0x20 && b <= 0x9f) {
 			output_char(b);
 			column++;
@@ -163,7 +194,7 @@ void PRINTER::event_vline(int v, int clock)
 
 void PRINTER::output_char(uint8_t value)
 {
-	if(value == 0x0d || value == 0x0a || (value >= 0x20 && value < 0x7f)) {
+	if(value == 0x0d || value == 0x0a || (value >= 0x20 && value < 0x9f)) {
 		output_file(value);
 	}
 	if(value >= 0x20 && value <= 0x9f) {
